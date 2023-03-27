@@ -312,10 +312,12 @@ tidy_proj <- function(
     dplyr::mutate(item = 'OFL (t)') %>% 
     tidyr::pivot_wider(id_cols = item, names_from = Year, values_from = OFL) %>% 
     dplyr::bind_rows(projsum %>% 
-                       dplyr::mutate(item = 'maxABC (t)') %>% 
+                       dplyr::mutate(item = 'maxABC (t)',
+                                     ABC = ABC / yield_ratio) %>% 
                        tidyr::pivot_wider(id_cols = item, names_from = Year, values_from = ABC)) %>% 
     dplyr::bind_rows(projsum %>% 
-                       dplyr:: mutate(item = 'ABC (t)') %>% 
+                       dplyr:: mutate(item = 'ABC (t)',
+                                      ABC = ABC / yield_ratio) %>% 
                        tidyr::pivot_wider(id_cols = item, names_from = Year, values_from = ABC)) 
   
   # natural mortality
@@ -397,7 +399,8 @@ prep_exec_tbl <- function(
   return(data)
 }
 
-# format the executive summary table using flextable
+# format the executive summary table using flextable - original code by Ben
+# Williams: https://github.com/ben-williams/safe_tbl
 exec_tbl <- function(data, # output from prep_exec_tbl
                      endyr, # assessment year
                      tier, # tier 1-6

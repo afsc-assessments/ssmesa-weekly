@@ -352,6 +352,7 @@ out <- tidy_proj(stock = 'goa_rebs',       # stock name (tells the program what 
 out$scenario_results
 out$exec_tabl
 out$scen2_methods %>% print(n=Inf)
+out$scen2_methods %>% filter(item %in% c('ABC (t)', 'OFL (t)'))
 
 # summarize and save catch assumptions used in projections 
 (catch_assump <- catchsum %>% 
