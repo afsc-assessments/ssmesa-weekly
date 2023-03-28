@@ -285,16 +285,22 @@ if(endyr %% 2 == 0) { # For odd-year full assessment, use if(endyr %% 2 == 1) fo
   # and 2024
   L_16 <- paste(paste(endyr-1, round(catchsum$catch[catchsum$year == endyr-1], digits = 4), sep = "\t"), " # Finalized previous year catch", sep = " ")
   L_17 <- paste(paste(endyr, round(catchsum$catch[catchsum$year == endyr], digits = 4), sep = "\t"), "# Estimated from catch thru", catch_end_date, "with expansion factor =", endyr_ratio, sep = " ")
-  p1 <- percentiles[grep("Catch",percentiles)[1]:grep("Spawning_Biomass",percentiles)[1]]
-  L_18 <- paste(paste(endyr+1, round(as.numeric(strsplit(p1[5], split = " ")[[1]][8]) * 1000 * yield_ratio, digits = 4), sep = "\t"), "# Estimated as Max F scenario catch*yieldratio =", yield_ratio, sep = " ")
-  L_19 <- paste(paste(endyr+2, round(as.numeric(strsplit(p1[6], split = " ")[[1]][8]) * 1000 * yield_ratio, digits = 4), sep = "\t"), "# Estimated as Max F scenario catch*yieldratio", yield_ratio, sep = " ")
+  # future catches (note the indexing differs for full and partial yrs)
+  p1 <- percentiles[grep("Catch", percentiles)[1]:grep("Spawning_Biomass", percentiles)[1]]
+  futcatch1 <- round(as.numeric(strsplit(p1[5], split = " ")[[1]][8]) * 1000 * yield_ratio, digits = 4)
+  futcatch2 <- round(as.numeric(strsplit(p1[6], split = " ")[[1]][8]) * 1000 * yield_ratio, digits = 4)
+  L_18 <- paste(paste(endyr+1, futcatch1, sep = "\t"), "# Estimated as Max F scenario catch*yieldratio =", yield_ratio, sep = " ")
+  L_19 <- paste(paste(endyr+2, futcatch2, sep = "\t"), "# Estimated as Max F scenario catch*yieldratio", yield_ratio, sep = " ")
   spp_catch <- c(L_1,L_2,L_3,L_4,L_5,L_6,L_7,L_8,L_9,L_10,L_11,L_12,L_13,L_14,L_15,L_16,L_17,L_18,L_19)
 } else {
   # full: e.g., if year is 2021, we assign catches for 2021, 2022, and 2023
   L_16 <- paste(paste(endyr, round(catchsum$catch[catchsum$year == endyr], digits = 4), sep = "\t"), "# Estimated from catch thru", catch_end_date, "with expansion factor =", endyr_ratio, sep = " ")
-  p1 <- percentiles[grep("Catch",percentiles)[1]:grep("Spawning_Biomass",percentiles)[1]]
-  L_17 <- paste(paste(endyr+1, round(as.numeric(strsplit(p1[4], split = " ")[[1]][8]) * 1000 * yield_ratio, digits = 4), sep = "\t"), "# Estimated as Max F scenario catch*yieldratio", yield_ratio, sep = " ")
-  L_18 <- paste(paste(endyr+2, round(as.numeric(strsplit(p1[5], split = " ")[[1]][8]) * 1000 * yield_ratio, digits = 4), sep = "\t"), "# Estimated as Max F scenario catch*yieldratio", yield_ratio, sep = " ")
+  # future catches (note the indexing differs for full and partial yrs)
+  p1 <- percentiles[grep("Catch", percentiles)[1]:grep("Spawning_Biomass", percentiles)[1]]
+  futcatch1 <- round(as.numeric(strsplit(p1[4], split = " ")[[1]][8]) * 1000 * yield_ratio, digits = 4)
+  futcatch2 <- round(as.numeric(strsplit(p1[5], split = " ")[[1]][8]) * 1000 * yield_ratio, digits = 4)
+  L_17 <- paste(paste(endyr+1, futcatch1, sep = "\t"), "# Estimated as Max F scenario catch*yieldratio", yield_ratio, sep = " ")
+  L_18 <- paste(paste(endyr+2, futcatch2, sep = "\t"), "# Estimated as Max F scenario catch*yieldratio", yield_ratio, sep = " ")
   spp_catch <- c(L_1,L_2,L_3,L_4,L_5,L_6,L_7,L_8,L_9,L_10,L_11,L_12,L_13,L_14,L_15,L_16,L_17,L_18)
 }
 write.table(spp_catch, file = paste0(path, "/proj_model/spp_catch.dat"), quote = FALSE, row.names = FALSE, col.names = FALSE)
@@ -347,13 +353,16 @@ out$exec_tabl
 out$scenario_results
 
 # summarize and save catch assumptions used in projections 
-catch_assump <- catchsum %>% 
-  dplyr::bind_rows(out$scenario_results %>% 
-                     dplyr::filter(Variable == 'Yield (t)' & Year %in% c(endyr+1, endyr+2)) %>% 
-                     dplyr::select(year = Year, catch_used = "Author's F (Estimated catches)")) %>% 
-  dplyr::mutate(endyr_ratio = endyr_ratio,
-                yield_ratio = yield_ratio,
-                catch_end_date = catch_end_date,
-                catch_used = ifelse(year == endyr, catch * endyr_ratio, catch)) 
+(catch_assump <- catchsum %>% 
+    dplyr::bind_rows(out$scenario_results %>% 
+                       dplyr::filter(Variable == 'Yield (t)' & Year %in% c(endyr+1, endyr+2)) %>% 
+                       dplyr::select(year = Year, catch_used = "Author's F (Estimated catches)")) %>% 
+    dplyr::mutate(endyr_ratio = endyr_ratio,
+                  yield_ratio = yield_ratio,
+                  catch_end_date = catch_end_date,
+                  catch_used = case_when(year < endyr ~ catch,
+                                         year == endyr ~ catch * endyr_ratio, 
+                                         year == endyr+1 ~ futcatch1,
+                                         year == endyr+2 ~ futcatch2)))
 
 readr::write_csv(catch_assump, paste0(path, '/proj_catch_assumptions.csv'))
